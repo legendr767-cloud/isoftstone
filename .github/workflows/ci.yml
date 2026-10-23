@@ -1,0 +1,55 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: isoft, POSTGRES_PASSWORD: isoft_dev_pw, POSTGRES_DB: isoftstone_test }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U isoft" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://isoft:isoft_dev_pw@localhost:5432/isoftstone_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx vite build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: isoft, POSTGRES_PASSWORD: isoft_dev_pw, POSTGRES_DB: isoftstone_e2e }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U isoft" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CI: 'true'
+      DATABASE_URL: postgresql://isoft:isoft_dev_pw@localhost:5432/isoftstone_e2e
+      E2E_DATABASE_URL: postgresql://isoft:isoft_dev_pw@localhost:5432/isoftstone_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:migrate
+      - run: SEED_DEMO=true npm run db:seed
+      - run: npm run admin:create
+        env: { ADMIN_EMAIL: admin@e2e.test, ADMIN_PASSWORD: E2e-Admin-Passw0rd! }
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: playwright-report, retention-days: 7 }

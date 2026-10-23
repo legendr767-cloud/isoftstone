@@ -1,0 +1,31 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/montserrat';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+  html { scroll-behavior: smooth; }
+  body { @apply bg-ink-900 text-slate-200 font-sans antialiased; }
+  h1, h2, h3, h4 { @apply font-display tracking-tight text-white; }
+  :focus-visible { @apply outline-none ring-2 ring-brand-400 ring-offset-2 ring-offset-ink-900; }
+  ::selection { background: rgba(16,185,129,.35); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; } }
+}
+
+@layer components {
+  .card { @apply rounded-xl border border-line bg-ink-800/80 shadow-card; }
+  .section { @apply py-16 sm:py-24; }
+  .eyebrow { @apply text-xs font-bold uppercase tracking-[0.18em] text-brand-400; }
+  .prose-legal h2 { @apply mt-8 text-xl font-bold; }
+  .prose-legal p, .prose-legal li { @apply mt-3 leading-7 text-slate-300; }
+  .prose-legal ul { @apply list-disc pl-6; }
+  .prose-legal blockquote { @apply mt-4 rounded-lg border border-amber-400/40 bg-amber-400/10 p-4 text-amber-100; }
+}
+
+.hero-grid {
+  background-image: linear-gradient(rgba(148,163,184,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 30%, transparent 75%);
+}

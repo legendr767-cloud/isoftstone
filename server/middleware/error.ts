@@ -7,7 +7,6 @@ export function notFoundHandler(_req: Request, _res: Response, next: NextFunctio
   next(new AppError(404, 'NOT_FOUND', 'Route not found'));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
     return res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });

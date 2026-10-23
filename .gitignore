@@ -9,3 +9,5 @@ coverage
 playwright-report
 test-results
 .DS_Store
+public/sitemap.xml
+public/robots.txt
