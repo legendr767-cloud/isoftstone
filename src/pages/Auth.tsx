@@ -30,7 +30,12 @@ export function Login() {
   if (user) return <Navigate to={safeNext(params.get('next')) ?? (user.permissions?.includes('admin:overview') ? '/admin' : '/dashboard')} replace />;
   const onSubmit = handleSubmit(async (v) => {
     setErr(null);
-    try { await api.post<User>('/auth/login', v); await qc.invalidateQueries({ queryKey: ['me'] }); nav(safeNext(params.get('next')) ?? '/dashboard', { replace: true }); } catch (e) { setErr(errorText(e)); }
+    try {
+      await api.post<User>('/auth/login', v);
+      const me = await qc.fetchQuery({ queryKey: ['me'], queryFn: async () => (await api.get<User | null>('/auth/me')).data, staleTime: 0 });
+      const home = me?.permissions?.includes('admin:overview') ? '/admin' : '/dashboard';
+      nav(safeNext(params.get('next')) ?? home, { replace: true });
+    } catch (e) { setErr(errorText(e)); }
   });
   return (
     <Shell title="Sign in" subtitle="Welcome back. Access your dashboard.">

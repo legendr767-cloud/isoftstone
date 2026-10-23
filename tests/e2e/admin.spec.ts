@@ -12,14 +12,15 @@ test('administrator manages challenge products and cannot publish futures', asyn
   await page.getByRole('link', { name: 'Challenges' }).click();
   await page.getByRole('link', { name: 'New challenge' }).click();
 
-  await page.getByLabel('Name').fill('E-mini Futures Challenge');
+  await page.locator('#e-name').fill('E-mini Futures Challenge');
   await page.getByLabel('URL slug').fill(`futures-${Date.now()}`);
   await page.getByLabel('Tagline').fill('Trade index futures');
   await page.getByLabel('Description').fill('Trade CME futures contracts with leverage.');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText(/not supported\. iSoftStone offers forex products only/)).toBeVisible();
 
-  await page.getByLabel('Name').fill('E2E Forex Evaluation');
+  await page.locator('#e-name').fill('E2E Forex Evaluation');
+  await page.getByLabel('URL slug').fill(`e2e-forex-${Date.now()}`);
   await page.getByLabel('Tagline').fill('A forex challenge created by the test suite');
   await page.getByLabel('Description').fill('Forex-only evaluation created during the E2E run.');
   await page.getByRole('button', { name: 'Save' }).click();

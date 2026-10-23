@@ -51,7 +51,7 @@ test.describe('customer', () => {
     await page.getByRole('button', { name: 'Simulate success' }).click();
     await expect(page.getByText('Payment confirmed').first()).toBeVisible();
     await page.goto('/dashboard/accounts');
-    await expect(page.getByText('Awaiting provisioning', { exact: false })).toBeVisible();
+    await expect(page.getByText('Pending provisioning').first()).toBeVisible();
   });
 
   test('a failed payment can be retried', async ({ page }) => {
