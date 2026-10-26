@@ -12,9 +12,11 @@ const schema = z.object({
   PAYMENT_PROVIDER: z.enum(['none', 'dev_simulator']).default('none'),
   ALLOW_PAYMENT_SIMULATOR: bool,
   TRADING_PROVIDER: z.enum(['none', 'demo']).default('none'),
-  EMAIL_PROVIDER: z.enum(['none']).default('none'),
+  EMAIL_PROVIDER: z.enum(['none', 'resend']).default('none'),
+  RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('iSoftStone <no-reply@example.com>'),
-  SUPPORT_EMAIL: z.string().default('support@example.com'),
+  SUPPORT_EMAIL: z.string().default(''), // shown publicly and receives contact notifications only when set
+  DATABASE_CA: z.string().optional(), // PEM of the database CA: enables full TLS verification
 });
 
 export type Env = z.infer<typeof schema>;
@@ -34,6 +36,7 @@ export function getEnv(): Env {
       throw new Error('PAYMENT_PROVIDER=dev_simulator requires ALLOW_PAYMENT_SIMULATOR=true in production (demo deployments only)');
     }
   }
+  if (env.EMAIL_PROVIDER === 'resend' && !env.RESEND_API_KEY) throw new Error('EMAIL_PROVIDER=resend requires RESEND_API_KEY');
   cached = env;
   return env;
 }

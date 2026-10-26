@@ -9,6 +9,7 @@ import { About, HowItWorks, Legal, NotFound } from '@/pages/Static';
 const Challenges = lazy(() => import('@/pages/Challenges'));
 const ChallengeDetail = lazy(() => import('@/pages/ChallengeDetail'));
 const Calculator = lazy(() => import('@/pages/Calculator'));
+const Markets = lazy(() => import('@/pages/Markets'));
 const Faq = lazy(() => import('@/pages/Faq'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const Checkout = lazy(() => import('@/pages/Checkout'));
@@ -29,7 +30,7 @@ export default function App() {
         <Route element={<PublicLayout />}>
           <Route index element={<Home />} />
           <Route path="challenges" element={<Challenges />} /><Route path="challenges/:slug" element={<ChallengeDetail />} />
-          <Route path="how-it-works" element={<HowItWorks />} /><Route path="calculator" element={<Calculator />} />
+          <Route path="markets" element={<Markets />} /><Route path="how-it-works" element={<HowItWorks />} /><Route path="calculator" element={<Calculator />} />
           <Route path="about" element={<About />} /><Route path="faq" element={<Faq />} /><Route path="contact" element={<Contact />} />
           <Route path="legal/:slug" element={<Legal />} />
           <Route path="checkout/simulate/:attemptId" element={<CheckoutSimulator />} /><Route path="checkout/:productId" element={<Checkout />} />

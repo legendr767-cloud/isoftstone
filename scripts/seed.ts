@@ -15,7 +15,7 @@ import { DEMO_CHALLENGES, FAQ, INSTRUMENTS, LEGAL, PERMISSIONS, ROLES } from './
 const url = process.env.DATABASE_URL;
 if (!url) { console.error('DATABASE_URL is required'); process.exit(1); }
 const demo = process.env.SEED_DEMO === 'true';
-const pool = new pg.Pool({ connectionString: url, max: 1 });
+const pool = new pg.Pool({ connectionString: url, max: 1, ...(process.env.DATABASE_CA ? { ssl: { ca: process.env.DATABASE_CA, rejectUnauthorized: true } } : {}) });
 const db = drizzle(pool, { schema: s });
 
 await db.transaction(async (tx) => {

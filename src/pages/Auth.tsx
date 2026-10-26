@@ -9,6 +9,7 @@ import { Seo } from '@/components/Seo';
 import { Alert, Button, Card, Checkbox, Input } from '@/components/ui';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
+import { useSite } from '@/hooks/useSite';
 import type { User } from '@/lib/types';
 
 const pw = z.string().min(10, 'Use at least 10 characters').max(128).refine((p) => /[A-Za-z]/.test(p) && /\d/.test(p), 'Include at least one letter and one number');
@@ -83,10 +84,12 @@ export function Register() {
 }
 
 export function ForgotPassword() {
+  const { data: site } = useSite();
   const [done, setDone] = useState(false); const [err, setErr] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<{ email: string }>({ resolver: zodResolver(z.object({ email: z.string().email('Enter a valid email') })) });
   return (
     <Shell title="Reset your password" subtitle="Enter your email and we will send a reset link if an account exists.">
+      {site && !site.emailDelivery && <Alert tone="warning" className="mb-5" title="Email delivery is not enabled yet">Reset links cannot be sent right now. Please <Link className="underline" to="/contact">contact support</Link> to recover your account.</Alert>}
       {done ? <Alert tone="success">If an account exists for that email, a reset link has been sent. The link is valid for one hour.</Alert> : (
         <form onSubmit={handleSubmit(async (v) => { setErr(null); try { await api.post('/auth/forgot-password', v); setDone(true); } catch (e) { setErr(errorText(e)); } })} noValidate className="space-y-5">
           {err && <Alert tone="error">{err}</Alert>}

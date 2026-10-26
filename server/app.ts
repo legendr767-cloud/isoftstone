@@ -14,6 +14,7 @@ import { publicRouter } from './modules/public.js';
 import { customerRouter } from './modules/customer.js';
 import { checkoutRouter, webhookRouter } from './modules/checkout.js';
 import { adminRouter } from './modules/admin.js';
+import { marketRouter } from './modules/market.js';
 import { openApiDocument } from './openapi.js';
 
 export function createApp() {
@@ -41,6 +42,7 @@ export function createApp() {
   v1.use('/auth', authRouter);
   v1.use('/admin', adminRouter);
   v1.use('/me', customerRouter);
+  v1.use('/', marketRouter);
   v1.use('/', publicRouter);
   v1.use('/', checkoutRouter);
 

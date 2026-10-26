@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { and, desc, eq, gt, isNull, ne } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, lt, ne } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 import { getEnv } from '../config/env.js';
 import { asyncHandler, clientIp, ok, parse } from '../lib/http.js';
@@ -89,6 +89,13 @@ authRouter.post('/login', authLimiter, asyncHandler(async (req, res) => {
   if (user.status !== 'ACTIVE') throw new AppError(403, 'ACCOUNT_DISABLED', 'This account is not active. Contact support.');
   await db.update(schema.users).set({ failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() }).where(eq(schema.users.id, user.id));
   await createSession(res, user.id, { ip: clientIp(req), userAgent: req.headers['user-agent'] });
+  // housekeeping: purge long-expired sessions and spent tokens (cheap, indexed)
+  const cutoff = new Date(Date.now() - 24 * 3600_000);
+  void Promise.all([
+    db.delete(schema.sessions).where(lt(schema.sessions.expiresAt, cutoff)),
+    db.delete(schema.emailVerificationTokens).where(lt(schema.emailVerificationTokens.expiresAt, cutoff)),
+    db.delete(schema.passwordResetTokens).where(lt(schema.passwordResetTokens.expiresAt, cutoff)),
+  ]).catch(() => undefined);
   ok(res, await userPayload(user.id));
 }));
 

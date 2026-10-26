@@ -10,6 +10,7 @@ export const brand = {
   social: { x: '', instagram: '', youtube: '', telegram: '' } as Record<string, string>, // empty = hidden
   nav: [
     { to: '/challenges', label: 'Challenges' },
+    { to: '/markets', label: 'Markets' },
     { to: '/how-it-works', label: 'How it works' },
     { to: '/calculator', label: 'Calculator' },
     { to: '/about', label: 'About' },

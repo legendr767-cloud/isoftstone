@@ -15,6 +15,8 @@ export const openApiDocument = {
     '/challenges': { get: op('List published forex challenges (filters: model, minSize, maxSize, sort)', 'none', 'catalog') },
     '/challenges/{slug}': { get: op('Challenge details', 'none', 'catalog') },
     '/instruments': { get: op('Approved forex instruments', 'none', 'catalog') },
+    '/market/snapshot': { get: op('Latest ECB reference rates for approved pairs with 30-day sparkline', 'none', 'market') },
+    '/market/history': { get: op('Daily reference-rate history (pair, range=1M|3M|6M|1Y)', 'none', 'market') },
     '/faq': { get: op('Searchable FAQ (q, category)', 'none', 'content') },
     '/legal/{slug}': { get: op('Legal document (draft status is exposed)', 'none', 'content') },
     '/contact': { post: op('Submit a support request', 'none', 'support') },

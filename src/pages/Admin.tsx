@@ -18,6 +18,7 @@ const nav: NavItem[] = [
   { to: '/admin/accounts', label: 'Accounts', icon: Wallet, perm: 'accounts:manage' }, { to: '/admin/rewards', label: 'Rewards', icon: Gift, perm: 'rewards:review' },
   { to: '/admin/support', label: 'Support', icon: LifeBuoy, perm: 'support:manage' }, { to: '/admin/audit', label: 'Audit log', icon: ClipboardList, perm: 'audit:read' },
   { to: '/admin/settings', label: 'Settings', icon: Cog, perm: 'site:manage' },
+  { to: '/dashboard/profile', label: 'My account', icon: Users },
 ];
 export const AdminShell = () => <AppShell title="Admin" items={nav} requirePerm="admin:overview" />;
 

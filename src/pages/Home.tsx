@@ -8,6 +8,7 @@ import { Seo } from '@/components/Seo';
 import { ButtonLink, Card, Skeleton, Alert } from '@/components/ui';
 import { ChallengeCard } from '@/components/ChallengeCard';
 import { ProfitCalculator } from '@/components/ProfitCalculator';
+import { MarketSnapshot } from '@/components/MarketSnapshot';
 import { useSite } from '@/hooks/useSite';
 
 function HeroVisual() {
@@ -96,6 +97,16 @@ export default function Home() {
               <p className="col-span-full rounded-xl border border-dashed border-line p-10 text-center text-slate-400">Challenges will appear here once their terms are approved and published.</p>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="section border-b border-line/60" aria-labelledby="mkts">
+        <div className="container">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div><p className="eyebrow">Markets</p><h2 id="mkts" className="mt-3 text-3xl font-extrabold sm:text-4xl">Today's forex reference rates</h2></div>
+            <Link to="/markets" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-400 hover:underline">Open price charts <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+          </div>
+          <div className="mt-8"><MarketSnapshot /></div>
         </div>
       </section>
 

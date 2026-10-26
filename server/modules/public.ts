@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, ilike, or, sql, count } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 import { asyncHandler, ok, parse } from '../lib/http.js';
 import { notFound } from '../lib/errors.js';
@@ -8,6 +8,9 @@ import { randomToken } from '../lib/security.js';
 import { contactLimiter } from '../middleware/security.js';
 import { getPublicChallenge, listPublicChallenges, siteInfo } from '../services/catalog.js';
 import { notify } from '../services/audit.js';
+import { sendMail } from '../services/mailer.js';
+import { getEnv } from '../config/env.js';
+import { AppError } from '../lib/errors.js';
 
 export const publicRouter = Router();
 
@@ -92,6 +95,13 @@ const contactSchema = z.object({
 publicRouter.post('/contact', contactLimiter, asyncHandler(async (req, res) => {
   const body = parse(contactSchema, req.body);
   if (body.website) return ok(res, { ticketNo: 'ISS-T-RECEIVED' }, undefined, 201); // silently drop bots
+  // Instance-independent abuse protection: per-email and global ceilings stored in the database.
+  const hourAgo = new Date(Date.now() - 3600_000); const minAgo = new Date(Date.now() - 60_000);
+  const [[perEmail], [global]] = await Promise.all([
+    db.select({ c: count() }).from(schema.supportTickets).where(and(eq(schema.supportTickets.email, body.email), gt(schema.supportTickets.createdAt, hourAgo))),
+    db.select({ c: count() }).from(schema.supportTickets).where(gt(schema.supportTickets.createdAt, minAgo)),
+  ]);
+  if (perEmail.c >= 5 || global.c >= 40) throw new AppError(429, 'RATE_LIMITED', 'Too many requests right now. Please try again later.');
   const ticketNo = `ISS-T-${randomToken(5).toUpperCase().replace(/[-_]/g, 'X')}`;
   await db.transaction(async (tx) => {
     const [t] = await tx.insert(schema.supportTickets).values({
@@ -100,5 +110,6 @@ publicRouter.post('/contact', contactLimiter, asyncHandler(async (req, res) => {
     await tx.insert(schema.supportMessages).values({ ticketId: t.id, authorId: req.auth?.id ?? null, body: body.message });
     if (req.auth) await notify(tx, req.auth.id, 'Support request received', `We received your request ${ticketNo}.`);
   });
+  if (getEnv().SUPPORT_EMAIL) void sendMail({ to: getEnv().SUPPORT_EMAIL, subject: `[${ticketNo}] ${body.subject}`, text: `New support request from ${body.name} <${body.email}>\n\n${body.message}` });
   ok(res, { ticketNo }, undefined, 201);
 }));
