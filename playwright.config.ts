@@ -10,7 +10,7 @@ const API_ENV = {
 export default defineConfig({
   testDir: './tests/e2e', fullyParallel: false, workers: 1, retries: process.env.CI ? 1 : 0, reporter: process.env.CI ? [['github'], ['list'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
-  projects: [{ name: 'desktop', use: { ...devices['Desktop Chrome'] } }, { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /mobile\.spec\.ts/ }],
+  projects: [{ name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /mobile\.spec\.ts/ }, { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /mobile\.spec\.ts/ }],
   webServer: [
     { command: 'npx tsx server/dev.ts', url: 'http://localhost:4000/api/v1/health', env: API_ENV, reuseExistingServer: !process.env.CI, timeout: 60_000 },
     { command: 'npx vite build && npx vite preview --port 5173 --strictPort', url: 'http://localhost:5173', reuseExistingServer: !process.env.CI, timeout: 180_000 },

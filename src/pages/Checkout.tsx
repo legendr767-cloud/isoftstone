@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorText } from '@/lib/api';
 import type { Challenge } from '@/lib/types';
 import { Seo } from '@/components/Seo';
@@ -10,7 +10,7 @@ import { useSite } from '@/hooks/useSite';
 import { drawdownLabel, money, pct } from '@/lib/format';
 
 export default function Checkout() {
-  const { productId } = useParams(); const nav = useNavigate(); const { user, loading } = useAuth(); const { data: site } = useSite();
+  const { productId } = useParams(); const nav = useNavigate(); const qc = useQueryClient(); const { user, loading } = useAuth(); const { data: site } = useSite();
   const [terms, setTerms] = useState(false); const [err, setErr] = useState<string | null>(null);
   const { data: list, isLoading } = useQuery({ queryKey: ['challenges'], queryFn: async () => (await api.get<Challenge[]>('/challenges')).data });
   const found = list?.flatMap((c) => c.sizes.filter((s) => s.productId === productId).map((s) => ({ c, s })))[0];
@@ -21,7 +21,7 @@ export default function Checkout() {
       const p = await api.post<{ attemptId: string; nextPath: string | null }>(`/orders/${o.data.id}/pay`);
       return { id: o.data.id, next: p.data.nextPath ?? `/dashboard/orders/${o.data.id}` };
     },
-    onSuccess: ({ next }) => nav(next), onError: (e) => setErr(errorText(e)),
+    onSuccess: async ({ next }) => { await qc.invalidateQueries(); nav(next); }, onError: (e) => setErr(errorText(e)),
   });
   if (loading || isLoading) return <div className="container py-12"><PageLoader /></div>;
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(`/checkout/${productId}`)}`} replace />;
@@ -60,9 +60,9 @@ export default function Checkout() {
 }
 
 export function CheckoutSimulator() {
-  const { attemptId } = useParams(); const nav = useNavigate(); const [err, setErr] = useState<string | null>(null);
+  const { attemptId } = useParams(); const nav = useNavigate(); const qc = useQueryClient(); const [err, setErr] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery({ queryKey: ['sim', attemptId], queryFn: async () => (await api.get<{ amount: string; currency: string; orderId: string; orderNumber: string; status: string }>(`/payments/simulator/${attemptId}`)).data, retry: false });
-  const complete = useMutation({ mutationFn: (outcome: 'success' | 'failure') => api.post(`/payments/simulator/${attemptId}/complete`, { outcome }), onSuccess: () => nav(`/dashboard/orders/${data!.orderId}`), onError: (e) => setErr(errorText(e)) });
+  const complete = useMutation({ mutationFn: (outcome: 'success' | 'failure') => api.post(`/payments/simulator/${attemptId}/complete`, { outcome }), onSuccess: async () => { await qc.invalidateQueries(); nav(`/dashboard/orders/${data!.orderId}`); }, onError: (e) => setErr(errorText(e)) });
   if (isLoading) return <div className="container py-12"><PageLoader /></div>;
   if (error || !data) return <div className="container py-24 text-center"><Seo title="Payment simulator" noindex /><h1 className="text-2xl font-extrabold">Payment simulator is not available</h1></div>;
   return (
