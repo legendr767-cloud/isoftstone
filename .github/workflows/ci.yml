@@ -46,7 +46,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run db:migrate
-      - run: SEED_DEMO=true npm run db:seed
+      - run: npm run db:seed
       - run: npm run admin:create
         env: { ADMIN_EMAIL: admin@e2e.test, ADMIN_PASSWORD: E2e-Admin-Passw0rd! }
       - run: npx playwright test

@@ -216,7 +216,7 @@ adminRouter.get('/accounts', P('accounts:manage'), asyncHandler(async (_req, res
 }));
 adminRouter.patch('/accounts/:id', P('accounts:manage'), asyncHandler(async (req, res) => {
   const id = pid(req.params.id);
-  const body = parse(z.object({ status: z.enum(['PENDING_PROVISIONING', 'ACTIVE', 'PASSED', 'FAILED', 'BREACHED', 'CLOSED']).optional(), phase: z.enum(['PHASE_1', 'PHASE_2', 'VERIFICATION', 'FUNDED_SIM']).optional(), note: z.string().max(300).optional() }), req.body);
+  const body = parse(z.object({ status: z.enum(['PENDING_PROVISIONING', 'ACTIVE', 'PASSED', 'FAILED', 'BREACHED', 'CLOSED']).optional(), phase: z.enum(['PHASE_1', 'PHASE_2', 'PHASE_3', 'VERIFICATION', 'FUNDED_SIM']).optional(), note: z.string().max(300).optional() }), req.body);
   await db.transaction(async (tx) => {
     const [a] = await tx.select().from(schema.tradingAccounts).where(eq(schema.tradingAccounts.id, id)).for('update');
     if (!a) throw notFound();
@@ -246,3 +246,20 @@ adminRouter.put('/site/show-draft-offers', P('site:manage'), asyncHandler(async 
   ok(res, { value });
 }));
 export { sql };
+
+// ───────── legal documents (versioned; the newest version is what customers see and accept) ─────────
+adminRouter.get('/legal', P('site:manage'), asyncHandler(async (_req, res) => {
+  const docs = await db.query.legalDocuments.findMany({ with: { versions: { orderBy: desc(schema.legalVersions.version), limit: 1 } }, orderBy: asc(schema.legalDocuments.title) });
+  ok(res, docs.map((d) => ({ slug: d.slug, title: d.title, version: d.versions[0]?.version ?? 0, status: d.versions[0]?.status ?? 'DRAFT', body: d.versions[0]?.body ?? '', updatedAt: d.versions[0]?.createdAt })));
+}));
+adminRouter.put('/legal/:slug', P('site:manage'), asyncHandler(async (req, res) => {
+  const body = parse(z.object({ body: z.string().trim().min(20).max(100_000), status: z.enum(['DRAFT', 'PUBLISHED']) }), req.body);
+  const doc = await db.query.legalDocuments.findFirst({ where: eq(schema.legalDocuments.slug, String(req.params.slug)), with: { versions: { orderBy: desc(schema.legalVersions.version), limit: 1 } } });
+  if (!doc) throw notFound('Document not found');
+  const version = (doc.versions[0]?.version ?? 0) + 1;
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.legalVersions).values({ documentId: doc.id, version, body: body.body, status: body.status });
+    await audit(tx, { actorId: req.auth!.id, action: 'legal.version_published', entityType: 'legal', entityId: doc.slug, detail: { version, status: body.status }, ip: clientIp(req) });
+  });
+  ok(res, { slug: doc.slug, version, status: body.status });
+}));

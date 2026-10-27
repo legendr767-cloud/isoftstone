@@ -31,10 +31,10 @@ export default function Challenges() {
 
       <form className="mt-8 grid gap-4 sm:grid-cols-3" onSubmit={(e) => e.preventDefault()} aria-label="Filter challenges">
         <Select id="f-model" label="Model" value={model} onChange={(e) => set('model', e.target.value)}>
-          <option value="">All models</option><option value="ONE_STEP">One-step</option><option value="TWO_STEP">Two-step</option><option value="INSTANT">Instant</option>
+          <option value="">All models</option><option value="ONE_STEP">One-step</option><option value="TWO_STEP">Two-step</option><option value="THREE_STEP">Three-step</option>
         </Select>
         <Select id="f-size" label="Minimum account size" value={minSize} onChange={(e) => set('minSize', e.target.value)}>
-          <option value="">Any size</option>{[5000, 10000, 25000, 50000, 100000].map((s) => <option key={s} value={s}>{money(s)}+</option>)}
+          <option value="">Any size</option>{[5000, 10000, 25000, 50000, 100000, 200000].map((s) => <option key={s} value={s}>{money(s)}+</option>)}
         </Select>
         <Select id="f-sort" label="Sort by" value={sort} onChange={(e) => set('sort', e.target.value)}>
           <option value="order">Featured</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option><option value="size_asc">Account size: small to large</option><option value="size_desc">Account size: large to small</option>
@@ -63,7 +63,7 @@ export default function Challenges() {
               <tbody>
                 {([
                   ['Model', (c: Challenge) => modelLabel(c.model)],
-                  ['Stages', (c: Challenge) => c.stages.length || 'None (instant)'],
+                  ['Stages', (c: Challenge) => c.stages.length],
                   ['Profit target', (c: Challenge) => c.stages.length ? c.stages.map((s) => pct(s.profitTargetPct)).join(' → ') : '—'],
                   ['Minimum trading days', (c: Challenge) => c.stages.length ? c.stages.map((s) => s.minTradingDays).join(' / ') : '—'],
                   ['Daily drawdown', (c: Challenge) => pct(c.rules?.dailyDrawdownPct)],
@@ -86,8 +86,8 @@ export default function Challenges() {
           </div>
           <ul className="mt-6 grid gap-3 text-sm text-slate-400 md:grid-cols-3">
             <li><strong className="text-slate-200">One-step</strong> — a single evaluation stage with one, higher target.</li>
-            <li><strong className="text-slate-200">Two-step</strong> — two stages with lower targets each; takes longer but is less demanding per stage.</li>
-            <li><strong className="text-slate-200">Instant</strong> — no evaluation stage, with tighter risk limits from day one.</li>
+            <li><strong className="text-slate-200">Two-step</strong> — two stages with lower targets each; several variants trade target size against risk limits.</li>
+            <li><strong className="text-slate-200">Three-step</strong> — three small targets with no minimum trading days; the most gradual path.</li>
           </ul>
         </section>
       )}

@@ -26,7 +26,7 @@ publicRouter.get('/site', asyncHandler(async (_req, res) => {
 
 publicRouter.get('/challenges', asyncHandler(async (req, res) => {
   const q = parse(z.object({
-    model: z.enum(['ONE_STEP', 'TWO_STEP', 'INSTANT']).optional(),
+    model: z.enum(['ONE_STEP', 'TWO_STEP', 'THREE_STEP']).optional(),
     minSize: z.coerce.number().positive().optional(), maxSize: z.coerce.number().positive().optional(),
     sort: z.enum(['order', 'price_asc', 'price_desc', 'size_asc', 'size_desc']).default('order'),
   }), req.query);
@@ -50,6 +50,12 @@ publicRouter.get('/challenges/:slug', asyncHandler(async (req, res) => {
   const c = await getPublicChallenge(String(req.params.slug));
   if (!c) throw notFound('Challenge not found');
   ok(res, c);
+}));
+
+publicRouter.get('/addons', asyncHandler(async (_req, res) => {
+  const rows = await db.select().from(schema.productAddons).where(and(eq(schema.productAddons.active, true), eq(schema.productAddons.approved, true))).orderBy(asc(schema.productAddons.code));
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  ok(res, rows.map((a) => ({ code: a.code, name: a.name, description: a.description, priceType: a.priceType, priceValue: a.priceValue })));
 }));
 
 publicRouter.get('/instruments', asyncHandler(async (_req, res) => {

@@ -7,7 +7,7 @@ import { Alert, ButtonLink, Card, PageLoader } from '@/components/ui';
 
 export function HowItWorks() {
   const steps: Array<[string, string]> = [
-    ['Choose a forex challenge', 'Compare one-step, two-step and instant models by account size, price and rules.'],
+    ['Choose a forex challenge', 'Compare one-step, two-step and three-step models by account size, price and rules.'],
     ['Register an account', 'Sign up with your email, accept the Terms and Conditions and verify your address.'],
     ['Review the challenge rules', 'Profit targets, drawdown limits, minimum trading days and trading policies are shown before you pay.'],
     ['Complete checkout', 'The price is re-calculated on our servers. Payment is confirmed only by a verified provider notification, never by a browser redirect.'],

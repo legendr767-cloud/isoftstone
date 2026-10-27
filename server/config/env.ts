@@ -9,7 +9,9 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
   PAYMENT_WEBHOOK_SECRET: z.string().min(32, 'PAYMENT_WEBHOOK_SECRET must be at least 32 characters'),
-  PAYMENT_PROVIDER: z.enum(['none', 'dev_simulator']).default('none'),
+  PAYMENT_PROVIDER: z.enum(['none', 'dev_simulator', 'kora']).default('none'),
+  KORA_SECRET_KEY: z.string().optional(), // sk_test_… / sk_live_… (also verifies Kora webhooks)
+  KORA_CURRENCY: z.string().length(3).default('USD'),
   ALLOW_PAYMENT_SIMULATOR: bool,
   TRADING_PROVIDER: z.enum(['none', 'demo']).default('none'),
   EMAIL_PROVIDER: z.enum(['none', 'resend']).default('none'),
@@ -36,6 +38,7 @@ export function getEnv(): Env {
       throw new Error('PAYMENT_PROVIDER=dev_simulator requires ALLOW_PAYMENT_SIMULATOR=true in production (demo deployments only)');
     }
   }
+  if (env.PAYMENT_PROVIDER === 'kora' && !env.KORA_SECRET_KEY) throw new Error('PAYMENT_PROVIDER=kora requires KORA_SECRET_KEY');
   if (env.EMAIL_PROVIDER === 'resend' && !env.RESEND_API_KEY) throw new Error('EMAIL_PROVIDER=resend requires RESEND_API_KEY');
   cached = env;
   return env;

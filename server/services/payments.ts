@@ -10,20 +10,27 @@ import { logger } from '../lib/logger.js';
 export const SIGNATURE_TOLERANCE_SEC = 300;
 
 export interface PaymentEvent {
-  id: string; type: 'payment.succeeded' | 'payment.failed';
+  id: string; type: 'payment.succeeded' | 'payment.failed' | 'ignore';
   providerRef: string; amount: string; currency: string;
 }
 
+export interface InitiateInput {
+  attemptId: string; orderId: string; orderNumber: string; amount: string; currency: string;
+  customer: { name: string; email: string };
+}
+
 /**
- * Payment provider abstraction. A real gateway implements the same two operations:
- *  - initiate(): create a payment session with the gateway
+ * Payment provider abstraction. A real gateway implements:
+ *  - initiate(): create a payment session with the gateway (returns where to send the customer)
  *  - verifyWebhook(): authenticate an inbound webhook and normalise it
+ *  - confirm() (optional): ask the gateway's API to confirm the transaction before fulfilment
  * Orders are NEVER marked paid from a browser redirect — only from a verified webhook.
  */
 export interface PaymentProvider {
   readonly name: string;
-  initiate(a: { attemptId: string; amount: string; currency: string }): Promise<{ providerRef: string; nextPath: string | null }>;
+  initiate(a: InitiateInput): Promise<{ providerRef: string; nextPath: string | null }>;
   verifyWebhook(rawBody: string, signatureHeader: string | undefined): PaymentEvent;
+  confirm?(event: PaymentEvent): Promise<void>;
 }
 
 export function signPayload(rawBody: string, timestamp: number, secret: string) {
@@ -39,9 +46,62 @@ export function verifySignature(rawBody: string, header: string | undefined, sec
   return safeEqual(parts.v1, hmacSha256(secret, `${t}.${rawBody}`));
 }
 
+const KORA_BASE = 'https://api.korapay.com/merchant/api/v1';
+
+/** Kora (formerly Korapay) hosted checkout. https://developers.korapay.com */
+export class KoraProvider implements PaymentProvider {
+  name = 'kora';
+  private key() { return getEnv().KORA_SECRET_KEY!; }
+  async initiate(a: InitiateInput) {
+    const env = getEnv(); const reference = `isoft-${a.attemptId}`;
+    let res: Response;
+    try {
+      res = await fetch(`${KORA_BASE}/charges/initialize`, {
+        method: 'POST', signal: AbortSignal.timeout(10_000),
+        headers: { Authorization: `Bearer ${this.key()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reference, amount: Number(a.amount), currency: env.KORA_CURRENCY, narration: `iSoftStone order ${a.orderNumber}`,
+          redirect_url: `${env.APP_URL}/dashboard/orders/${a.orderId}`, notification_url: `${env.APP_URL}/api/v1/payments/webhook/kora`,
+          customer: { name: a.customer.name, email: a.customer.email }, merchant_bears_cost: false,
+        }),
+      });
+    } catch (err) { logger.error({ err }, 'kora initialize failed'); throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'Could not reach the payment provider. Please try again.'); }
+    const json = await res.json().catch(() => null) as { status?: boolean; message?: string; data?: { checkout_url?: string } } | null;
+    if (!res.ok || !json?.status || !json.data?.checkout_url) {
+      logger.error({ status: res.status, message: json?.message }, 'kora rejected initialize');
+      throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'The payment provider could not start this payment. Please try again.');
+    }
+    return { providerRef: reference, nextPath: json.data.checkout_url };
+  }
+  /** Kora signs ONLY the `data` object: HMAC-SHA256(secret_key, JSON.stringify(data)) in `x-korapay-signature`. */
+  verifyWebhook(rawBody: string, header: string | undefined): PaymentEvent {
+    let body: { event?: string; data?: { reference?: string; amount?: number | string; currency?: string } };
+    try { body = JSON.parse(rawBody); } catch { throw new AppError(400, 'BAD_JSON', 'Malformed webhook body'); }
+    if (!body?.data || !header || !safeEqual(hmacSha256(this.key(), JSON.stringify(body.data)), header)) {
+      throw new AppError(400, 'INVALID_SIGNATURE', 'Webhook signature verification failed');
+    }
+    const d = body.data;
+    const type = body.event === 'charge.success' ? 'payment.succeeded' : body.event === 'charge.failed' ? 'payment.failed' : 'ignore';
+    return { id: `${body.event}:${d.reference}`, type, providerRef: String(d.reference), amount: d2(Number(d.amount)), currency: String(d.currency ?? '') };
+  }
+  /** Second line of defence: confirm the transaction with Kora's API before any value is delivered. */
+  async confirm(event: PaymentEvent) {
+    if (event.type !== 'payment.succeeded') return;
+    let res: Response;
+    try { res = await fetch(`${KORA_BASE}/charges/${encodeURIComponent(event.providerRef)}`, { signal: AbortSignal.timeout(10_000), headers: { Authorization: `Bearer ${this.key()}` } }); }
+    catch { throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'Could not confirm the transaction'); }
+    const json = await res.json().catch(() => null) as { data?: { status?: string; amount?: number | string; currency?: string } } | null;
+    const d = json?.data;
+    if (!res.ok || d?.status !== 'success' || cmpMoney(d2(Number(d.amount)), event.amount) !== 0 || d.currency !== event.currency) {
+      logger.warn({ ref: event.providerRef, status: d?.status }, 'kora transaction confirmation failed');
+      throw new AppError(502, 'PAYMENT_NOT_CONFIRMED', 'Transaction could not be confirmed with the provider');
+    }
+  }
+}
+
 class DevSimulatorProvider implements PaymentProvider {
   name = 'dev_simulator';
-  async initiate(a: { attemptId: string }) {
+  async initiate(a: InitiateInput) {
     return { providerRef: `sim_${randomToken(12)}`, nextPath: `/checkout/simulate/${a.attemptId}` };
   }
   verifyWebhook(rawBody: string, header: string | undefined): PaymentEvent {
@@ -58,7 +118,9 @@ export function simulatorEnabled(): boolean {
 }
 
 export function getPaymentProvider(): PaymentProvider | null {
-  return getEnv().PAYMENT_PROVIDER === 'dev_simulator' && simulatorEnabled() ? new DevSimulatorProvider() : null;
+  const p = getEnv().PAYMENT_PROVIDER;
+  if (p === 'kora') return new KoraProvider();
+  return p === 'dev_simulator' && simulatorEnabled() ? new DevSimulatorProvider() : null;
 }
 
 /** Idempotent webhook processing. Safe to call repeatedly with the same event. */
@@ -69,6 +131,8 @@ export async function processWebhook(providerName: string, rawBody: string, sign
   let event: PaymentEvent;
   try {
     event = provider.verifyWebhook(rawBody, signature);
+    if (event.type === 'ignore') return { duplicate: false as const, ignored: 'event_type' as const };
+    await provider.confirm?.(event);
   } catch (e) {
     logger.warn({ provider: providerName }, 'rejected webhook with invalid signature');
     throw e;

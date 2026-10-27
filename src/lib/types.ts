@@ -5,7 +5,7 @@ export interface Rules {
   newsTradingAllowed: boolean; weekendHoldingAllowed: boolean; overnightHoldingAllowed: boolean; eaAllowed: boolean; copyTradingAllowed: boolean; rewardMinAmount: string; notes: string | null;
 }
 export interface Challenge {
-  id: string; slug: string; name: string; model: 'ONE_STEP' | 'TWO_STEP' | 'INSTANT'; tagline: string; description: string; status: string; isDraftTerms: boolean;
+  id: string; slug: string; name: string; model: 'ONE_STEP' | 'TWO_STEP' | 'THREE_STEP'; tagline: string; description: string; status: string; isDraftTerms: boolean;
   stages: Stage[]; rules: Rules | null; sizes: Size[]; instruments: string[];
 }
 export interface User {

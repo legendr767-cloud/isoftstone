@@ -3,6 +3,10 @@
 A forex-only, PERN-stack platform: marketing site, challenge marketplace, customer dashboard, admin console,
 checkout with verified payment webhooks, and provider abstractions for future broker/payment integrations.
 
+> **Catalogue.** Six forex models (One-Step, Two-Step Forex / Standard / Pro, Three-Step, Blitz) with an optional 100% profit-split add-on. Instant funding is intentionally not offered. Terms mirror the public structure of the reference firm; **prices are starting values editable in Admin → Challenges.**
+>
+> **Market data.** Price charts use real ECB reference rates (via Frankfurter), updated each working day. They are not tradable quotes.
+>
 > **Scope & honesty.** Accounts are *simulated evaluation accounts*, not live brokerage accounts. Payments, trading-platform
 > data, email delivery and identity verification are **not connected to real providers** until credentials are supplied
 > (see [Integrations that need credentials](#integrations-that-need-external-credentials)). Commercial terms in the seed data are
@@ -27,9 +31,7 @@ cp .env.example .env            # fill in values (see comments in the file)
 npm ci
 createdb isoftstone_dev         # or any Postgres 14+ database; set DATABASE_URL
 npm run db:migrate              # apply migrations
-npm run db:seed                 # roles, permissions, forex instruments, FAQ, legal drafts, DRAFT challenges
-# optional demo content (publishes the illustrative DRAFT challenges):
-npm run db:seed:demo
+npm run db:seed                 # roles, permissions, forex instruments, FAQ, legal documents, add-on and the six forex challenges
 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='a-long-unique-passphrase' npm run admin:create
 npm run dev                     # API :4000 + Vite :5173 (Vite proxies /api)
 ```
@@ -43,7 +45,7 @@ Load the `.env` into your shell (e.g. `set -a; source .env; set +a`) — the ser
 | `npm test` | all Vitest projects (unit, api, web) |
 | `npm run test:e2e` | Playwright journeys (needs a browser; CI installs one) |
 | `npm run db:generate` | generate a new migration from `server/db/schema.ts` |
-| `npm run db:migrate` / `db:seed` / `db:seed:demo` | apply migrations / seed / seed + publish demo drafts |
+| `npm run db:migrate` / `db:seed` | apply migrations / idempotent seed (never overwrites edited challenges) |
 | `npm run admin:create` | provision an administrator from `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
 
 ## Testing
@@ -74,11 +76,11 @@ no email delivery until a provider is configured; no malware-scanned file upload
 ## Integrations that need external credentials
 | Integration | Status | What is needed |
 |---|---|---|
-| Payment gateway | **Not connected.** `PAYMENT_PROVIDER=none` by default; `dev_simulator` for dev/preview only | Provider account, API keys, webhook secret, supported countries/methods; implement `PaymentProvider` (`server/services/payments.ts`) |
+| Payment gateway | **Kora implemented** (hosted checkout, HMAC-verified webhooks, API confirmation before fulfilment). Inactive until `PAYMENT_PROVIDER=kora` + `KORA_SECRET_KEY` are set. `dev_simulator` is dev/preview only | Kora secret key (`sk_test_…` then `sk_live_…`); webhook URL `https://<domain>/api/v1/payments/webhook/kora` set in the Kora dashboard; confirm your Kora account can charge in `KORA_CURRENCY` (default USD) |
 | Trading platform / broker | **Not connected.** `none` by default; `demo` fixtures for development only (refused in production) | Platform/broker API access; implement `TradingProvider` (`server/services/trading-provider.ts`) incl. provisioning |
-| Email | **Not connected.** Links are never delivered | SMTP/API provider; implement `sendMail` (`server/services/mailer.ts`) |
+| Email | **Resend implemented**, inactive until `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` (and a verified sending domain in `EMAIL_FROM`) are set. Without it, verification/reset links are not delivered | Resend API key + domain |
 | Identity verification (KYC) | **Manual.** Staff set status in Admin → Customers | Optional KYC vendor |
 | Payout transfers | **Not connected.** "Processed" is an internal workflow state | Payout provider; set `transfer_ref` on completion |
-| Legal documents | **Drafts.** Not reviewed by counsel | Legal entity, jurisdiction, retention, processors |
+| Legal documents | **Written, pending counsel review.** Editable in Admin → Legal documents (versioned) | Legal entity, jurisdiction, retention, payout terms |
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). OpenAPI: `GET /api/v1/openapi.json`.

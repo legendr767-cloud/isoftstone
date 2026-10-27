@@ -9,5 +9,5 @@ export default async function setup() {
   await pool.end();
   const env = { ...process.env, DATABASE_URL: url };
   execSync('npx tsx scripts/migrate.ts', { env, stdio: 'pipe' });
-  execSync('npx tsx scripts/seed.ts', { env: { ...env, SEED_DEMO: 'true' }, stdio: 'pipe' });
+  execSync('npx tsx scripts/seed.ts', { env, stdio: 'pipe' });
 }

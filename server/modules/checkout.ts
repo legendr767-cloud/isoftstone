@@ -18,7 +18,7 @@ export const checkoutRouter = Router();
 export const webhookRouter = Router();
 webhookRouter.post('/payments/webhook/:provider', raw({ type: '*/*', limit: '100kb' }), asyncHandler(async (req, res) => {
   const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
-  const result = await processWebhook(String(req.params.provider), rawBody, req.headers['x-isoft-signature'] as string | undefined);
+  const result = await processWebhook(String(req.params.provider), rawBody, (req.headers['x-korapay-signature'] ?? req.headers['x-isoft-signature']) as string | undefined);
   ok(res, { received: true, duplicate: 'duplicate' in result ? result.duplicate : false });
 }));
 
@@ -89,14 +89,22 @@ checkoutRouter.post('/orders/:id/pay', checkoutLimiter, asyncHandler(async (req,
   const existing = await db.query.paymentAttempts.findFirst({ where: eq(schema.paymentAttempts.idempotencyKey, idemKey) });
   if (existing) {
     if (existing.orderId !== order.id) throw new AppError(409, 'CONFLICT', 'Idempotency key already used');
-    return ok(res, { attemptId: existing.id, provider: existing.provider, nextPath: existing.status === 'INITIATED' ? `/checkout/simulate/${existing.id}` : null });
+    return ok(res, { attemptId: existing.id, provider: existing.provider, nextPath: existing.status === 'INITIATED' && existing.provider === 'dev_simulator' ? `/checkout/simulate/${existing.id}` : null });
   }
   const attempt = await db.transaction(async (tx) => {
     const [a] = await tx.insert(schema.paymentAttempts).values({ orderId: order.id, provider: provider.name, amount: order.total, currency: order.currency, idempotencyKey: idemKey }).returning();
     await tx.update(schema.orders).set({ status: 'AWAITING_PAYMENT' }).where(eq(schema.orders.id, order.id));
     return a;
   });
-  const init = await provider.initiate({ attemptId: attempt.id, amount: order.total, currency: order.currency });
+  const profile = await db.query.userProfiles.findFirst({ where: eq(schema.userProfiles.userId, req.auth!.id) });
+  let init: Awaited<ReturnType<typeof provider.initiate>>;
+  try {
+    init = await provider.initiate({ attemptId: attempt.id, orderId: order.id, orderNumber: order.orderNumber, amount: order.total, currency: order.currency,
+      customer: { name: `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || req.auth!.email, email: req.auth!.email } });
+  } catch (e) {
+    await db.update(schema.paymentAttempts).set({ status: 'FAILED' }).where(eq(schema.paymentAttempts.id, attempt.id));
+    throw e;
+  }
   await db.update(schema.paymentAttempts).set({ providerRef: init.providerRef }).where(eq(schema.paymentAttempts.id, attempt.id));
   await db.insert(schema.orderEvents).values({ orderId: order.id, type: 'PAYMENT_INITIATED', detail: `Payment initiated with ${provider.name}` });
   ok(res, { attemptId: attempt.id, provider: provider.name, nextPath: init.nextPath }, undefined, 201);

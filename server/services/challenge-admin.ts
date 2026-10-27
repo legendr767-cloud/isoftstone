@@ -11,11 +11,11 @@ const moneyStr = z.coerce.number().gt(0).max(100_000_000).transform((n) => n.toF
 export const challengeInputSchema = z.object({
   slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).min(3).max(60),
   name: z.string().trim().min(3).max(80),
-  model: z.enum(['ONE_STEP', 'TWO_STEP', 'INSTANT']),
+  model: z.enum(['ONE_STEP', 'TWO_STEP', 'THREE_STEP']), // instant funding is intentionally not offered
   tagline: z.string().trim().min(3).max(160),
   description: z.string().trim().min(10).max(2000),
   sortOrder: z.number().int().min(0).max(1000).default(0),
-  stages: z.array(z.object({ name: z.string().trim().min(1).max(60), profitTargetPct: pctStr, minTradingDays: z.number().int().min(0).max(60).default(0), maxDays: z.number().int().min(1).max(365).nullable().default(null) })).max(2),
+  stages: z.array(z.object({ name: z.string().trim().min(1).max(60), profitTargetPct: pctStr, minTradingDays: z.number().int().min(0).max(60).default(0), maxDays: z.number().int().min(1).max(365).nullable().default(null) })).max(3),
   rules: z.object({
     dailyDrawdownPct: pctStr, maxDrawdownPct: pctStr, drawdownMethod: z.enum(['BALANCE_BASED', 'EQUITY_BASED', 'TRAILING']),
     leverage: z.string().regex(/^1:\d{1,4}$/), profitSplitPct: pctStr,
@@ -27,7 +27,7 @@ export const challengeInputSchema = z.object({
 });
 export type ChallengeInput = z.infer<typeof challengeInputSchema>;
 
-const EXPECTED_STAGES = { ONE_STEP: 1, TWO_STEP: 2, INSTANT: 0 } as const;
+const EXPECTED_STAGES = { ONE_STEP: 1, TWO_STEP: 2, THREE_STEP: 3 } as const;
 
 /** Business-rule validation (server-side, independent of any UI). */
 export async function validateChallenge(input: ChallengeInput) {

@@ -9,5 +9,5 @@ export const pct = (v: string | number | null | undefined) => (v === null || v =
 export const date = (v: string | Date | null | undefined) => (v ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(new Date(v)) : '—');
 export const dateTime = (v: string | Date | null | undefined) => (v ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(v)) : '—');
 export const label = (s: string) => s.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
-export const modelLabel = (m: string) => ({ ONE_STEP: 'One-step', TWO_STEP: 'Two-step', INSTANT: 'Instant' } as Record<string, string>)[m] ?? m;
+export const modelLabel = (m: string) => ({ ONE_STEP: 'One-step', TWO_STEP: 'Two-step', THREE_STEP: 'Three-step' } as Record<string, string>)[m] ?? m;
 export const drawdownLabel = (m: string) => ({ BALANCE_BASED: 'Balance-based', EQUITY_BASED: 'Equity-based', TRAILING: 'Trailing' } as Record<string, string>)[m] ?? m;

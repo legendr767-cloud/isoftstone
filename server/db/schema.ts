@@ -18,14 +18,14 @@ const pct = (name: string) => numeric(name, { precision: 5, scale: 2 });
 
 // ───────── Enums ─────────
 export const assetClass = pgEnum('asset_class', ['FOREX']);
-export const challengeModel = pgEnum('challenge_model', ['ONE_STEP', 'TWO_STEP', 'INSTANT']);
+export const challengeModel = pgEnum('challenge_model', ['ONE_STEP', 'TWO_STEP', 'THREE_STEP', 'INSTANT']);
 export const publishStatus = pgEnum('publish_status', ['DRAFT', 'PUBLISHED', 'ARCHIVED']);
 export const drawdownMethod = pgEnum('drawdown_method', ['BALANCE_BASED', 'EQUITY_BASED', 'TRAILING']);
 export const userStatus = pgEnum('user_status', ['ACTIVE', 'SUSPENDED', 'CLOSED']);
 export const orderStatus = pgEnum('order_status', ['PENDING', 'AWAITING_PAYMENT', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED']);
 export const paymentStatus = pgEnum('payment_status', ['INITIATED', 'SUCCEEDED', 'FAILED', 'CANCELLED']);
 export const accountStatus = pgEnum('account_status', ['PENDING_PROVISIONING', 'ACTIVE', 'PASSED', 'FAILED', 'BREACHED', 'CLOSED']);
-export const accountPhase = pgEnum('account_phase', ['PHASE_1', 'PHASE_2', 'VERIFICATION', 'FUNDED_SIM']);
+export const accountPhase = pgEnum('account_phase', ['PHASE_1', 'PHASE_2', 'PHASE_3', 'VERIFICATION', 'FUNDED_SIM']);
 export const metricSource = pgEnum('metric_source', ['PROVIDER', 'DEMO_FIXTURE']);
 export const rewardStatus = pgEnum('reward_status', ['PENDING', 'APPROVED', 'REJECTED', 'PROCESSED']);
 export const ticketStatus = pgEnum('ticket_status', ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED']);

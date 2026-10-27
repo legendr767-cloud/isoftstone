@@ -17,6 +17,7 @@ const nav: NavItem[] = [
   { to: '/admin/customers', label: 'Customers', icon: Users, perm: 'customers:read' }, { to: '/admin/orders', label: 'Orders', icon: CreditCard, perm: 'orders:read' },
   { to: '/admin/accounts', label: 'Accounts', icon: Wallet, perm: 'accounts:manage' }, { to: '/admin/rewards', label: 'Rewards', icon: Gift, perm: 'rewards:review' },
   { to: '/admin/support', label: 'Support', icon: LifeBuoy, perm: 'support:manage' }, { to: '/admin/audit', label: 'Audit log', icon: ClipboardList, perm: 'audit:read' },
+  { to: '/admin/legal', label: 'Legal documents', icon: ClipboardList, perm: 'site:manage' },
   { to: '/admin/settings', label: 'Settings', icon: Cog, perm: 'site:manage' },
   { to: '/dashboard/profile', label: 'My account', icon: Users },
 ];
@@ -50,7 +51,7 @@ export function AdminChallenges() {
 }
 
 type Form = {
-  slug: string; name: string; model: 'ONE_STEP' | 'TWO_STEP' | 'INSTANT'; tagline: string; description: string; sortOrder: number;
+  slug: string; name: string; model: 'ONE_STEP' | 'TWO_STEP' | 'THREE_STEP'; tagline: string; description: string; sortOrder: number;
   stages: Array<{ name: string; profitTargetPct: string; minTradingDays: number; maxDays: string }>;
   rules: { dailyDrawdownPct: string; maxDrawdownPct: string; drawdownMethod: string; leverage: string; profitSplitPct: string; newsTradingAllowed: boolean; weekendHoldingAllowed: boolean; overnightHoldingAllowed: boolean; eaAllowed: boolean; copyTradingAllowed: boolean; rewardMinAmount: string; notes: string };
   sizes: Array<{ accountSize: string; price: string; active: boolean }>; instruments: string[];
@@ -78,7 +79,7 @@ export function ChallengeEditor() {
 function EditorForm({ init, instruments, isNew, onSave }: { init: Form; instruments: string[]; isNew: boolean; onSave: (b: unknown) => Promise<void> }) {
   const { register, control, handleSubmit, watch, formState: { isSubmitting } } = useForm<Form>({ defaultValues: init });
   const stages = useFieldArray({ control, name: 'stages' }); const sizes = useFieldArray({ control, name: 'sizes' });
-  const model = watch('model'); const expected = { ONE_STEP: 1, TWO_STEP: 2, INSTANT: 0 }[model];
+  const model = watch('model'); const expected = { ONE_STEP: 1, TWO_STEP: 2, THREE_STEP: 3 }[model];
   const submit = handleSubmit((v) => onSave({
     ...v, sortOrder: Number(v.sortOrder) || 0,
     stages: v.stages.map((s) => ({ name: s.name, profitTargetPct: s.profitTargetPct, minTradingDays: Number(s.minTradingDays) || 0, maxDays: s.maxDays ? Number(s.maxDays) : null })),
@@ -90,7 +91,7 @@ function EditorForm({ init, instruments, isNew, onSave }: { init: Form; instrume
       <Alert tone="info">Saving resets the terms to "draft" so changed commercial values must be re-approved. All content is validated on the server and must be forex-only.</Alert>
       <Card className="space-y-4 p-6"><h2 className="font-bold">Details</h2>
         <div className="grid gap-4 sm:grid-cols-2"><Input id="e-name" label="Name" {...register('name', { required: true })} /><Input id="e-slug" label="URL slug" hint="lowercase-with-dashes" {...register('slug', { required: true })} /></div>
-        <div className="grid gap-4 sm:grid-cols-2"><Select id="e-model" label="Model" {...register('model')}><option value="ONE_STEP">One-step</option><option value="TWO_STEP">Two-step</option><option value="INSTANT">Instant</option></Select><Input id="e-order" label="Sort order" type="number" {...register('sortOrder', { valueAsNumber: true })} /></div>
+        <div className="grid gap-4 sm:grid-cols-2"><Select id="e-model" label="Model" {...register('model')}><option value="ONE_STEP">One-step</option><option value="TWO_STEP">Two-step</option><option value="THREE_STEP">Three-step</option></Select><Input id="e-order" label="Sort order" type="number" {...register('sortOrder', { valueAsNumber: true })} /></div>
         <Input id="e-tag" label="Tagline" {...register('tagline', { required: true })} /><Textarea id="e-desc" label="Description" {...register('description', { required: true })} /></Card>
       <Card className="space-y-4 p-6"><div className="flex items-center justify-between"><h2 className="font-bold">Evaluation stages <span className="text-sm font-normal text-slate-400">(this model needs {expected})</span></h2><Button type="button" size="sm" variant="secondary" onClick={() => stages.append({ name: `Phase ${stages.fields.length + 1}`, profitTargetPct: '5', minTradingDays: 4, maxDays: '' })}>Add stage</Button></div>
         {stages.fields.map((f, i) => <div key={f.id} className="grid items-end gap-3 sm:grid-cols-5"><Input id={`s-n${i}`} label="Name" {...register(`stages.${i}.name`)} /><Input id={`s-t${i}`} label="Target %" {...register(`stages.${i}.profitTargetPct`)} /><Input id={`s-d${i}`} label="Min days" type="number" {...register(`stages.${i}.minTradingDays`)} /><Input id={`s-m${i}`} label="Max days" {...register(`stages.${i}.maxDays`)} /><Button type="button" variant="ghost" onClick={() => stages.remove(i)}>Remove</Button></div>)}</Card>
@@ -194,7 +195,7 @@ export function AdminAccounts() {
   return (<><Title>Trading account records</Title><Alert tone="info" className="mb-4">Records are created automatically when a payment is confirmed. Provisioning real trading credentials requires a configured and tested trading-platform integration.</Alert>
     {data?.length === 0 ? <EmptyState icon={<BarChart3 className="h-10 w-10" />} title="No account records yet" /> : <TableWrap caption="Accounts"><thead><tr><Th>Account</Th><Th>Customer</Th><Th>Balance</Th><Th>Status</Th><Th>Phase</Th></tr></thead><tbody>{data?.map((a) => <tr key={a.id}><Td className="font-mono text-xs">{a.accountRef}</Td><Td>{a.email}</Td><Td>{money(a.startingBalance)}</Td>
       <Td><select aria-label={`Status for ${a.accountRef}`} className="rounded-md border border-line bg-ink-800 px-2 py-1 text-sm" value={a.status} onChange={(e) => window.confirm(`Set ${a.accountRef} to ${e.target.value}?`) && upd.mutate({ id: a.id, status: e.target.value })}>{['PENDING_PROVISIONING', 'ACTIVE', 'PASSED', 'FAILED', 'BREACHED', 'CLOSED'].map((s) => <option key={s} value={s}>{label(s)}</option>)}</select></Td>
-      <Td><select aria-label={`Phase for ${a.accountRef}`} className="rounded-md border border-line bg-ink-800 px-2 py-1 text-sm" value={a.phase} onChange={(e) => window.confirm(`Set ${a.accountRef} phase to ${e.target.value}?`) && upd.mutate({ id: a.id, phase: e.target.value })}>{['PHASE_1', 'PHASE_2', 'VERIFICATION', 'FUNDED_SIM'].map((s) => <option key={s} value={s}>{label(s)}</option>)}</select></Td></tr>)}</tbody></TableWrap>}</>);
+      <Td><select aria-label={`Phase for ${a.accountRef}`} className="rounded-md border border-line bg-ink-800 px-2 py-1 text-sm" value={a.phase} onChange={(e) => window.confirm(`Set ${a.accountRef} phase to ${e.target.value}?`) && upd.mutate({ id: a.id, phase: e.target.value })}>{['PHASE_1', 'PHASE_2', 'PHASE_3', 'VERIFICATION', 'FUNDED_SIM'].map((s) => <option key={s} value={s}>{label(s)}</option>)}</select></Td></tr>)}</tbody></TableWrap>}</>);
 }
 
 export function AdminAudit() {
@@ -210,4 +211,21 @@ export function AdminSettings() {
       <p className="mt-2 text-sm text-slate-400">When off (recommended for production), only challenges whose terms have been <strong>approved</strong> appear publicly. When on, published challenges with placeholder terms are shown with a "draft" label — use only for demos.</p>
       <Button className="mt-4" variant={site?.showDraftOffers ? 'danger' : 'secondary'} loading={set.isPending} onClick={() => set.mutate(!site?.showDraftOffers)}>{site?.showDraftOffers ? 'Turn off draft offers' : 'Turn on draft offers'}</Button></Card>
     <Card className="mt-6 p-6"><h2 className="font-bold">Integration status</h2><ul className="mt-3 space-y-2 text-sm"><li>Payments: <Badge tone={site?.payments.configured ? 'amber' : 'slate'}>{site?.payments.mode ?? '…'}</Badge></li><li>Trading data: <Badge tone={site?.tradingData.connected ? 'amber' : 'slate'}>{site?.tradingData.connected ? (site.tradingData.demo ? 'demo fixtures' : 'connected') : 'not connected'}</Badge></li><li>Email delivery: <Badge tone={site?.emailDelivery ? 'green' : 'slate'}>{site?.emailDelivery ? 'configured' : 'not configured'}</Badge></li></ul></Card></>);
+}
+
+export function AdminLegal() {
+  const qc = useQueryClient(); const { toast } = useToast(); const [slug, setSlug] = useState(''); const [body, setBody] = useState(''); const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>('PUBLISHED');
+  const { data, isLoading } = useGet<Array<{ slug: string; title: string; version: number; status: string; body: string }>>(['admin', 'legal'], '/admin/legal');
+  const save = useMutation({ mutationFn: () => api.put(`/admin/legal/${slug}`, { body, status }), onSuccess: () => { toast('success', 'New version saved.'); qc.invalidateQueries({ queryKey: ['admin', 'legal'] }); qc.invalidateQueries({ queryKey: ['legal'] }); }, onError: (e) => toast('error', errorText(e)) });
+  if (isLoading) return <PageLoader />;
+  const select = (s: string) => { const d = data?.find((x) => x.slug === s); setSlug(s); setBody(d?.body ?? ''); setStatus(d?.status === 'DRAFT' ? 'DRAFT' : 'PUBLISHED'); };
+  return (<><Title>Legal documents</Title>
+    <Alert tone="warning" className="mb-6" title="Have counsel review these">Each save creates a new version. Replace every [BRACKETED] placeholder with confirmed facts, then mark the version Published. Use "## " for headings and "- " for list items.</Alert>
+    <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
+      <ul className="space-y-2">{data?.map((d) => <li key={d.slug}><button onClick={() => select(d.slug)} className={`w-full rounded-lg border px-4 py-3 text-left text-sm ${slug === d.slug ? 'border-brand-500 bg-brand-500/10' : 'border-line hover:border-slate-500'}`}><span className="block font-semibold text-white">{d.title}</span><span className="text-xs text-slate-400">v{d.version} · {label(d.status)}</span></button></li>)}</ul>
+      {slug ? <Card className="space-y-4 p-6"><Textarea id="lg-body" label="Document text" rows={22} value={body} onChange={(e) => setBody(e.target.value)} className="font-mono text-xs" />
+        <Select id="lg-st" label="Status of the new version" value={status} onChange={(e) => setStatus(e.target.value as 'DRAFT' | 'PUBLISHED')}><option value="PUBLISHED">Published</option><option value="DRAFT">Draft (shows a review notice)</option></Select>
+        <div className="flex gap-3"><Button loading={save.isPending} onClick={() => window.confirm('Save as a new version?') && save.mutate()}>Save new version</Button><ButtonLink to={`/legal/${slug}`} variant="secondary" target="_blank">Preview public page</ButtonLink></div></Card>
+        : <EmptyState title="Select a document">Choose a document on the left to edit it.</EmptyState>}
+    </div></>);
 }

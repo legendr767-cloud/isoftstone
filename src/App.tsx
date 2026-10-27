@@ -21,7 +21,7 @@ const DashboardShell = dash('DashboardShell'), Overview = dash('Overview'), Acco
   Rewards = dash('Rewards'), Support = dash('Support'), TicketDetail = dash('TicketDetail'), Notifications = dash('Notifications'), Profile = dash('Profile');
 const adm = (k: string) => lazy(() => import('@/pages/Admin').then((m) => ({ default: (m as any)[k] })));
 const AdminShell = adm('AdminShell'), AdminOverview = adm('AdminOverview'), AdminChallenges = adm('AdminChallenges'), ChallengeEditor = adm('ChallengeEditor'), AdminCustomers = adm('AdminCustomers'), AdminCustomer = adm('AdminCustomer'),
-  AdminOrders = adm('AdminOrders'), AdminOrder = adm('AdminOrder'), AdminSupport = adm('AdminSupport'), AdminTicket = adm('AdminTicket'), AdminRewards = adm('AdminRewards'), AdminAccounts = adm('AdminAccounts'), AdminAudit = adm('AdminAudit'), AdminSettings = adm('AdminSettings');
+  AdminOrders = adm('AdminOrders'), AdminOrder = adm('AdminOrder'), AdminSupport = adm('AdminSupport'), AdminTicket = adm('AdminTicket'), AdminRewards = adm('AdminRewards'), AdminAccounts = adm('AdminAccounts'), AdminAudit = adm('AdminAudit'), AdminLegal = adm('AdminLegal'), AdminSettings = adm('AdminSettings');
 
 export default function App() {
   return (
@@ -48,7 +48,7 @@ export default function App() {
           <Route path="customers" element={<AdminCustomers />} /><Route path="customers/:id" element={<AdminCustomer />} />
           <Route path="orders" element={<AdminOrders />} /><Route path="orders/:id" element={<AdminOrder />} /><Route path="accounts" element={<AdminAccounts />} />
           <Route path="rewards" element={<AdminRewards />} /><Route path="support" element={<AdminSupport />} /><Route path="support/:id" element={<AdminTicket />} />
-          <Route path="audit" element={<AdminAudit />} /><Route path="settings" element={<AdminSettings />} />
+          <Route path="audit" element={<AdminAudit />} /><Route path="legal" element={<AdminLegal />} /><Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>
     </Suspense>

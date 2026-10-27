@@ -235,6 +235,6 @@ describe('search input handling', () => {
     expect(wild.body.data).toHaveLength(0); // "%" must not match every row
     const wild2 = await admin.c.get(`/admin/customers?q=${encodeURIComponent('_')}`);
     expect(wild2.body.meta.total).toBeLessThan((await admin.c.get('/admin/customers')).body.meta.total + 1);
-    expect((await client().get(`/faq?q=${encodeURIComponent('%')}`)).body.data).toHaveLength(0);
+    expect((await client().get(`/faq?q=${encodeURIComponent('%_%')}`)).body.data).toHaveLength(0); // unescaped, this would match every row
   });
 });

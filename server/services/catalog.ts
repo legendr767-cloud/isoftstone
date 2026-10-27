@@ -2,7 +2,7 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { db, schema } from '../db/index.js';
 import { getEnv } from '../config/env.js';
 import { d2 } from '../lib/money.js';
-import { simulatorEnabled } from './payments.js';
+import { getPaymentProvider } from './payments.js';
 import { getTradingProvider } from './trading-provider.js';
 
 export async function getShowDraftOffers(): Promise<boolean> {
@@ -66,7 +66,7 @@ export async function siteInfo() {
   return {
     brand: 'iSoftStone', supportEmail: env.SUPPORT_EMAIL,
     showDraftOffers: await getShowDraftOffers(),
-    payments: { configured: simulatorEnabled(), mode: simulatorEnabled() ? 'simulator' : 'unconfigured' },
+    payments: { configured: !!getPaymentProvider(), mode: getPaymentProvider()?.name === 'dev_simulator' ? 'simulator' : (getPaymentProvider()?.name ?? 'unconfigured') },
     tradingData: { connected: getTradingProvider().name !== 'none', demo: getTradingProvider().isDemo },
     emailDelivery: env.EMAIL_PROVIDER !== 'none',
   };

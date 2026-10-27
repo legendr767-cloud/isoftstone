@@ -142,7 +142,7 @@ export function Orders() {
 export function OrderDetail() {
   const { id } = useParams(); const nav = useNavigate(); const qc = useQueryClient(); const { data: site } = useSite(); const [err, setErr] = useState<string | null>(null);
   const { data: o, isLoading, error } = useQuery({ queryKey: ['order', id], staleTime: 0, refetchOnMount: 'always', refetchInterval: (q) => (q.state.data?.status === 'AWAITING_PAYMENT' ? 3000 : false), queryFn: async () => (await api.get<{ orderNumber: string; status: string; total: string; currency: string; createdAt: string; paidAt: string | null; items: Array<{ id: string; description: string; unitPrice: string }>; events: Array<{ type: string; detail: string | null; createdAt: string }> }>(`/me/orders/${id}`)).data, retry: false });
-  const pay = useMutation({ mutationFn: () => api.post<{ nextPath: string | null }>(`/orders/${id}/pay`), onSuccess: async (r) => { await qc.invalidateQueries(); nav(r.data.nextPath ?? `/dashboard/orders/${id}`); }, onError: (e) => setErr(errorText(e)) });
+  const pay = useMutation({ mutationFn: () => api.post<{ nextPath: string | null }>(`/orders/${id}/pay`), onSuccess: async (r) => { await qc.invalidateQueries(); const t = r.data.nextPath ?? `/dashboard/orders/${id}`; if (/^https?:\/\//.test(t)) window.location.assign(t); else nav(t); }, onError: (e) => setErr(errorText(e)) });
   if (isLoading) return <PageLoader />;
   if (error || !o) return <EmptyState title="Order not found"><Link className="text-brand-400 underline" to="/dashboard/orders">Back to orders</Link></EmptyState>;
   const payable = ['PENDING', 'AWAITING_PAYMENT', 'FAILED'].includes(o.status);

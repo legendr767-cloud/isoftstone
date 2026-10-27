@@ -9,24 +9,34 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSite } from '@/hooks/useSite';
 import { drawdownLabel, money, pct } from '@/lib/format';
 
+interface Addon { code: string; name: string; description: string; priceType: string; priceValue: string }
+const addonPrice = (a: Addon, base: number) => (a.priceType === 'PERCENT' ? (base * Number(a.priceValue)) / 100 : Number(a.priceValue));
+
+// Hosted gateways (e.g. Kora) return an absolute URL; the simulator returns an in-app path.
+const go = (nav: (p: string) => void, target: string) => (/^https?:\/\//.test(target) ? window.location.assign(target) : nav(target));
+
 export default function Checkout() {
   const { productId } = useParams(); const nav = useNavigate(); const qc = useQueryClient(); const { user, loading } = useAuth(); const { data: site } = useSite();
-  const [terms, setTerms] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const [terms, setTerms] = useState(false); const [codes, setCodes] = useState<string[]>([]);
+  const { data: addons } = useQuery({ queryKey: ['addons'], queryFn: async () => (await api.get<Addon[]>('/addons')).data }); const [err, setErr] = useState<string | null>(null);
   const { data: list, isLoading } = useQuery({ queryKey: ['challenges'], queryFn: async () => (await api.get<Challenge[]>('/challenges')).data });
   const found = list?.flatMap((c) => c.sizes.filter((s) => s.productId === productId).map((s) => ({ c, s })))[0];
   const place = useMutation({
     mutationFn: async () => {
-      const o = await api.post<{ id: string; paymentsAvailable: boolean }>('/orders', { items: [{ productId, addonCodes: [] }], acceptTerms: true });
+      const o = await api.post<{ id: string; paymentsAvailable: boolean }>('/orders', { items: [{ productId, addonCodes: codes }], acceptTerms: true });
       if (!o.data.paymentsAvailable) return { id: o.data.id, next: `/dashboard/orders/${o.data.id}` };
       const p = await api.post<{ attemptId: string; nextPath: string | null }>(`/orders/${o.data.id}/pay`);
       return { id: o.data.id, next: p.data.nextPath ?? `/dashboard/orders/${o.data.id}` };
     },
-    onSuccess: async ({ next }) => { await qc.invalidateQueries(); nav(next); }, onError: (e) => setErr(errorText(e)),
+    onSuccess: async ({ next }) => { await qc.invalidateQueries(); go(nav, next); }, onError: (e) => setErr(errorText(e)),
   });
   if (loading || isLoading) return <div className="container py-12"><PageLoader /></div>;
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent(`/checkout/${productId}`)}`} replace />;
   if (!found) return <div className="container py-24 text-center"><Seo title="Checkout" noindex /><h1 className="text-3xl font-extrabold">This product is not available</h1><Link to="/challenges" className="mt-6 inline-block text-brand-400 hover:underline">Browse challenges</Link></div>;
   const { c, s } = found; const r = c.rules!;
+  const chosen = (addons ?? []).filter((a) => codes.includes(a.code));
+  const extras = chosen.map((a) => ({ a, price: addonPrice(a, Number(s.price)) }));
+  const total = Number(s.price) + extras.reduce((t, e) => t + e.price, 0);
   return (
     <div className="container max-w-5xl py-12 sm:py-16">
       <Seo title="Checkout" noindex />
@@ -40,13 +50,18 @@ export default function Checkout() {
             </dl>
             <Link to={`/challenges/${c.slug}`} className="mt-4 inline-block text-sm font-semibold text-brand-400 hover:underline">Review full rules</Link>
           </Card>
+          {addons && addons.length > 0 && (
+            <Card className="p-6"><h2 className="text-lg font-bold">Add-ons</h2>
+              <div className="mt-4 space-y-3">{addons.map((a) => <Checkbox key={a.code} id={`ad-${a.code}`} checked={codes.includes(a.code)} onChange={(e) => setCodes((cs) => (e.target.checked ? [...cs, a.code] : cs.filter((x) => x !== a.code)))}
+                label={<><strong className="text-white">{a.name}</strong> <span className="text-brand-300">+{money(addonPrice(a, Number(s.price)), 'USD', 2)}</span><span className="block text-xs text-slate-400">{a.description}</span></>} />)}</div></Card>)}
           <Card className="p-6"><h2 className="text-lg font-bold">Customer details</h2><p className="mt-2 text-sm text-slate-300">{user.profile?.firstName} {user.profile?.lastName} · {user.email}</p>
             {!user.emailVerified && site?.emailDelivery && <Alert tone="warning" className="mt-4">Please verify your email before purchasing.</Alert>}</Card>
         </div>
         <aside><Card className="p-6 lg:sticky lg:top-24">
           <h2 className="text-lg font-bold">Order summary</h2>
           <div className="mt-4 flex justify-between text-sm"><span className="text-slate-400">{c.name} · {money(s.accountSize)}</span><span>{money(s.price, 'USD', 2)}</span></div>
-          <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4"><span className="font-semibold">Total</span><span className="font-display text-3xl font-extrabold">{money(s.price, 'USD', 2)}</span></div>
+          {extras.map((e) => <div key={e.a.code} className="mt-2 flex justify-between text-sm"><span className="text-slate-400">{e.a.name}</span><span>{money(e.price, 'USD', 2)}</span></div>)}
+          <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4"><span className="font-semibold">Total</span><span className="font-display text-3xl font-extrabold">{money(total, 'USD', 2)}</span></div>
           <p className="mt-2 text-xs text-slate-500">The final amount is re-calculated on the server when you place the order.</p>
           {site && !site.payments.configured && <Alert tone="warning" className="mt-4" title="Online payment unavailable">Payments are not configured yet. Placing the order saves it, but no payment will be taken.</Alert>}
           {site?.payments.mode === 'simulator' && <Alert tone="info" className="mt-4" title="Payment simulator">This deployment uses a test payment simulator. No real money is charged.</Alert>}

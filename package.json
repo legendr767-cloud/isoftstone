@@ -24,7 +24,6 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "db:seed:demo": "SEED_DEMO=true tsx scripts/seed.ts",
     "test:web": "vitest run --project web"
   },
   "dependencies": {

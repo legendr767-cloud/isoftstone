@@ -76,7 +76,7 @@ async function syncFromProvider(acct: { id: string; accountRef: string; starting
 }
 
 function currentStage(acct: Awaited<ReturnType<typeof ownedAccount>>) {
-  const n = acct.phase === 'PHASE_1' ? 1 : acct.phase === 'PHASE_2' ? 2 : null;
+  const n = acct.phase === 'PHASE_1' ? 1 : acct.phase === 'PHASE_2' ? 2 : acct.phase === 'PHASE_3' ? 3 : null;
   return n ? acct.product.challenge.stages.find((s) => s.stageNumber === n) ?? null : null;
 }
 
@@ -125,11 +125,14 @@ async function eligibilityFor(userId: string, acct: Awaited<ReturnType<typeof ow
   const metric = await latestMetric(acct.id);
   const rules = acct.product.challenge.rules;
   if (!rules) return { eligible: false, availableAmount: '0.00', reasons: ['Challenge rules are unavailable.'] };
+  // A purchased "100% profit split" add-on overrides the challenge's base split for this account only.
+  const [item] = await db.select({ addons: schema.orderItems.addons }).from(schema.orderItems).where(eq(schema.orderItems.id, acct.orderItemId));
+  const fullSplit = Array.isArray(item?.addons) && (item.addons as Array<{ code?: string }>).some((a) => a.code === 'profit-split-100');
   const open = await db.select({ c: count() }).from(schema.rewardRequests).where(and(eq(schema.rewardRequests.accountId, acct.id), inArray(schema.rewardRequests.status, ['PENDING', 'APPROVED'])));
   return evaluateRewardEligibility({
     accountStatus: acct.status, accountPhase: acct.phase, userVerification: verification, metricSource: metric?.source ?? null,
     startingBalance: acct.startingBalance, balance: metric?.balance ?? acct.startingBalance,
-    rule: { dailyDrawdownPct: d2(rules.dailyDrawdownPct), maxDrawdownPct: d2(rules.maxDrawdownPct), profitSplitPct: d2(rules.profitSplitPct), rewardMinAmount: d2(rules.rewardMinAmount) },
+    rule: { dailyDrawdownPct: d2(rules.dailyDrawdownPct), maxDrawdownPct: d2(rules.maxDrawdownPct), profitSplitPct: fullSplit ? '100.00' : d2(rules.profitSplitPct), rewardMinAmount: d2(rules.rewardMinAmount) },
     openRequests: open[0].c, allowDemoData: getEnv().NODE_ENV !== 'production' && getTradingProvider().isDemo,
   });
 }

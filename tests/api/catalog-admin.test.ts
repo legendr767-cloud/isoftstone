@@ -32,21 +32,35 @@ describe('public catalogue', () => {
     expect(mins).toEqual([...mins].sort((a, b) => b - a));
     expect((await client().get('/challenges?model=FUTURES')).status).toBe(400);
   });
-  it('hides unapproved offers when the draft-offers switch is off, and shows approved ones', async () => {
+  it('lists the six approved forex models and no instant funding', async () => {
+    const res = await client().get('/challenges');
+    const slugs = res.body.data.map((c: any) => c.slug);
+    expect(slugs).toEqual(['one-step-forex', 'two-step-forex', 'two-step-standard', 'two-step-pro', 'three-step-forex', 'blitz-forex']);
+    expect(res.body.data.every((c: any) => c.model !== 'INSTANT' && !c.isDraftTerms)).toBe(true);
+    const three = res.body.data.find((c: any) => c.slug === 'three-step-forex');
+    expect(three.stages.map((s: any) => s.profitTargetPct)).toEqual(['6.00', '6.00', '6.00']);
+    expect((await client().get('/challenges?model=INSTANT')).status).toBe(400);
+    expect((await client().get('/challenges?model=THREE_STEP')).body.data).toHaveLength(1);
+  });
+  it('keeps a new challenge hidden until its terms are approved (draft switch off), then shows it', async () => {
     const admin = await createAdmin();
     await admin.c.put('/admin/site/show-draft-offers', { value: false });
-    expect((await client().get('/challenges')).body.data).toHaveLength(0);
-    const list = (await admin.c.get('/admin/challenges')).body.data as Array<{ id: string; slug: string }>;
-    await admin.c.post(`/admin/challenges/${list.find((c) => c.slug === 'one-step-forex')!.id}/approve`);
-    expect((await client().get('/challenges')).body.data.map((c: any) => c.slug)).toEqual(['one-step-forex']);
-    await admin.c.put('/admin/site/show-draft-offers', { value: true }); // restore for other tests
+    const created = await admin.c.post('/admin/challenges', validInput({ slug: `hidden-${uniq()}` }));
+    await admin.c.post(`/admin/challenges/${created.body.data.id}/publish`);
+    const visible = async () => (await client().get('/challenges')).body.data.some((c: any) => c.slug === created.body.data.slug);
+    expect(await visible()).toBe(false);
+    await admin.c.post(`/admin/challenges/${created.body.data.id}/approve`);
+    expect(await visible()).toBe(true);
+    await admin.c.post(`/admin/challenges/${created.body.data.id}/unpublish`);
+    expect(await visible()).toBe(false);
   });
   it('serves FAQ search and labelled draft legal documents', async () => {
     const faq = await client().get('/faq?q=drawdown');
     expect(faq.body.data.length).toBeGreaterThan(0);
     const terms = await client().get('/legal/terms');
-    expect(terms.body.data.status).toBe('DRAFT');
-    expect(terms.body.data.body).toMatch(/DRAFT/);
+    expect(terms.body.data.status).toBe('DRAFT'); // until counsel-reviewed text is published
+    expect(terms.body.data.body).toMatch(/pending review by qualified legal counsel/);
+    expect(terms.body.data.body).toMatch(/Kora/);
   });
   it('contains no futures offering anywhere in seeded content', async () => {
     const [ch, faq] = await Promise.all([client().get('/challenges'), client().get('/faq')]);
@@ -97,7 +111,8 @@ describe('admin challenge management', () => {
   it('enforces stage counts per model, drawdown ordering, and unique sizes', async () => {
     const { c } = await createAdmin();
     expect((await c.post('/admin/challenges', validInput({ model: 'TWO_STEP' }))).status).toBe(422);
-    expect((await c.post('/admin/challenges', validInput({ model: 'INSTANT' }))).status).toBe(422);
+    expect((await c.post('/admin/challenges', validInput({ model: 'THREE_STEP' }))).status).toBe(422);
+    expect((await c.post('/admin/challenges', validInput({ model: 'INSTANT' }))).status).toBe(400); // instant funding is not offered
     const r = validInput().rules as any;
     expect((await c.post('/admin/challenges', validInput({ rules: { ...r, dailyDrawdownPct: 9, maxDrawdownPct: 5 } }))).status).toBe(422);
     expect((await c.post('/admin/challenges', validInput({ sizes: [{ accountSize: 5000, price: 50 }, { accountSize: 5000, price: 60 }] }))).status).toBe(422);
