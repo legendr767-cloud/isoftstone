@@ -21,6 +21,8 @@ export function createApp() {
   const env = getEnv();
   const app = express();
   app.disable('x-powered-by');
+  // Netlify may deliver the function-prefixed or the original path; normalise to /api/...
+  app.use((req, _res, next) => { const pre = '/.netlify/functions/api'; if (req.url.startsWith(pre)) req.url = `/api${req.url.slice(pre.length)}`; next(); });
   app.set('trust proxy', 1);
 
   app.use(pinoHttp({ logger, genReqId: (req) => (req.headers['x-request-id'] as string) ?? randomUUID(), autoLogging: env.NODE_ENV !== 'test' }));

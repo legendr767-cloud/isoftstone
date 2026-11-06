@@ -2,7 +2,7 @@
 import { writeFileSync } from 'node:fs';
 import pg from 'pg';
 
-const host = process.env.SITE_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:5173');
+const host = process.env.SITE_URL ?? process.env.URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:5173');
 const base = host.replace(/\/$/, '');
 
 const urls: Array<{ loc: string; priority: string }> = [
